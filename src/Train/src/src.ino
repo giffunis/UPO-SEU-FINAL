@@ -15,13 +15,18 @@ const char mqttUserName[] = SECRET_MQTT_USERNAME;
 const char clientID[] = SECRET_MQTT_CLIENT_ID;
 const char mqttPass[] = SECRET_MQTT_PASSWORD;
 const int channelID = CHANNEL_ID;
+const int updateTimeInterval = UPDATE_TIME_INTERVAL;
 const int mqttPort = MQTT_PORT;
+const int trainFields = TRAIN_FIELDS;
+const int trainPosField = TRAIN_POS_FIELD;
+const int trainSpeedField = TRAIN_SPEED_FIELD;
 const int trainSpeedControlField = TRAIN_SPEED_CONTROL_FIELD;
 
 
 // Variables de la aplicación
 const char* server = "mqtt3.thingspeak.com";
 int status = WL_IDLE_STATUS;
+long lastPublishMillis  = 0;
 
 
 // Objetos
@@ -69,6 +74,21 @@ void loop() {
 
      // We subscribe to a channel feed
      mqttSubscribeToChannelFeed(channelID);
+  }
+
+  // Call the loop to maintain connection to the server.
+  mqttClient.loop();
+
+    // Update ThingSpeak channel periodically. The update results in the message to the subscriber.
+  if ( abs(millis() - lastPublishMillis) > updateTimeInterval) {
+    
+    int fieldsLength = trainFields;
+    int fields[] = {trainPosField, trainSpeedField};
+    String payloads[] = {String(1), String(90)}; //<= Pendiente de enviar los valores reales
+    mqttPublishChannelFeed(channelID, fields, payloads, fieldsLength);
+    
+    // Guardamos el momento de la última publicación.
+    lastPublishMillis = millis();
   }
   
 }
@@ -180,7 +200,7 @@ void mqttSubscriptionCallback( char* topic, byte* payload, unsigned int length )
  */
 int setTrainSpeed(int speed)
 {
-  int speedPWM = map(speed, 0, 100, 0, 255); // Adaptamos el numero a una escala de 0 a 255
+  int speedPWM = map(speed, 0, 100, 0, 255); // Adaptamos el número a una escala de 0 a 255
   analogWrite(enPin, speedPWM);
  
   Serial.println("El valor de velocidad intruducido es:");

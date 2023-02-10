@@ -1,4 +1,4 @@
-
+#include <ZeroTimer.h>
 #include <WiFi101.h>
 #include <PubSubClient.h>
 #include "arduino_secrets.h"
@@ -26,9 +26,10 @@ const int trainSpeedControlField = TRAIN_SPEED_CONTROL_FIELD;
 // Variables de la aplicación
 const char* server = "mqtt3.thingspeak.com";
 int status = WL_IDLE_STATUS;
-long lastPublishMillis  = 0;
-int _speed = 0; // Variable que almacena la velocidad en Km/h
-int _pos = 0;   // Variable que almacena la posición del tren
+long lastPublishMillis = 0; // Variable que se utiliza para controlar el tiempo de publicación en ThingSpeak
+long lastPosCalcMillis = 0; // Variable que almacena la última vez que se calculó el tiempo
+float _speed = 0; // Variable que almacena la velocidad en m/s
+float _pos = 0;   // Variable que almacena la posición del tren en m
 
 
 // Objetos
@@ -58,6 +59,8 @@ void setup()
   
   // Set the buffer to handle the returned JSON. NOTE: A buffer overflow of the message buffer will result in your callback not being invoked.
   mqttClient.setBufferSize( 2048 );
+
+  startTempToUpdatePos();
 }
 
 
@@ -86,7 +89,7 @@ void loop() {
     
     int fieldsLength = trainFields;
     int fields[] = {trainPosField, trainSpeedField};
-    String payloads[] = {String(10), String(_speed)}; //<= Pendiente de enviar los valores reales
+    String payloads[] = {String(getPosInKm(_pos)), String(getSpeedInKmH(_speed))}; //<= Pendiente de enviar los valores reales
     mqttPublishChannelFeed(channelID, fields, payloads, fieldsLength);
     
     // Guardamos el momento de la última publicación.
@@ -202,15 +205,16 @@ void mqttSubscriptionCallback( char* topic, byte* payload, unsigned int length )
  */
 int setTrainSpeed(int newSpeed)
 {
-  int speedPWM = map(newSpeed, 0, 100, 0, 255); // Adaptamos el número a una escala de 0 a 255
+  // Actualizamos la variable de velocidad en m/s
+  _speed = getSpeedInMS(newSpeed);
+  int speedPWM = map(_speed, 0, 28, 0, 255); // Adaptamos el número a una escala de 0 a 255
   analogWrite(enPin, speedPWM);
-
-  // Actualizamos la variable de velocidad
-  _speed = newSpeed;
  
   Serial.print("Modificada la velocidad del tren a ");
+  Serial.print(newSpeed);
+  Serial.print(" Km/h o ");
   Serial.print(_speed);
-  Serial.println(" Km/h");
+  Serial.println(" m/s");
 }
 
 /**
@@ -268,12 +272,28 @@ int payloadToInt( byte* payload, unsigned int length ){
   return atoi(input);
 }
 
-int getSpeedInKmH(int speedInMS)
+float getSpeedInKmH(int speedInMS)
 {
   return (speedInMS * 18) / 5;
 }
 
-int getSpeedInMS(int speedInKmH)
+float getSpeedInMS(int speedInKmH)
 {
   return (speedInKmH * 5) / 18;
+}
+
+float getPosInKm(int posInM)
+{
+  return posInM / 1000;
+}
+
+void startTempToUpdatePos()
+{
+  TCC.startTimer(100000, updatePosAndRestartTimmer);
+}
+
+void updatePosAndRestartTimmer()
+{
+  _pos = _pos + _speed; // S = V(m/s) * T(1s) + Pos_(t-1)
+  startTempToUpdatePos();
 }

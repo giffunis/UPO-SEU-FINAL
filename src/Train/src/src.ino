@@ -28,6 +28,7 @@ const char* server = "mqtt3.thingspeak.com";
 int status = WL_IDLE_STATUS;
 long lastPublishMillis  = 0;
 int _speed = 0; // Variable que almacena la velocidad en Km/h
+int _pos = 0;   // Variable que almacena la posición del tren
 
 
 // Objetos
@@ -45,8 +46,6 @@ void setup()
 
   // Llamamos a las funciones que hacen el setup de los componentes
   dcMotorSetup();
-
-  analogWrite(enPin, 0);
 
   // Connect to Wi-Fi network.
   connectWifi();
@@ -209,10 +208,9 @@ int setTrainSpeed(int newSpeed)
   // Actualizamos la variable de velocidad
   _speed = newSpeed;
  
-  Serial.print("El valor de velocidad intruducido es: ");
-  Serial.print(newSpeed); //Escribe el valor analogico PWM enPin
-  Serial.print(" Km/h que equivalen a : ");
-  Serial.println(speedPWM); //Escribe el valor analogico PWM enPin
+  Serial.print("Modificada la velocidad del tren a ");
+  Serial.print(_speed);
+  Serial.println(" Km/h");
 }
 
 /**
@@ -231,6 +229,9 @@ void dcMotorSetup(){
   // Establecemos el sentido del giro 'anti-horario'
   digitalWrite(in1Pin,HIGH);
   digitalWrite(in2Pin,LOW);
+
+  // Inicializamos la velocidad de inicio.
+  analogWrite(enPin, _speed);
 }
 
 /**
@@ -265,4 +266,14 @@ int payloadToInt( byte* payload, unsigned int length ){
     input[i] = ((char)payload[i]);
   }
   return atoi(input);
+}
+
+int getSpeedInKmH(int speedInMS)
+{
+  return (speedInMS * 18) / 5;
+}
+
+int getSpeedInMS(int speedInKmH)
+{
+  return (speedInKmH * 5) / 18;
 }

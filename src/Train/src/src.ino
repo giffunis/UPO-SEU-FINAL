@@ -28,8 +28,8 @@ const char* server = "mqtt3.thingspeak.com";
 int status = WL_IDLE_STATUS;
 long lastPublishMillis = 0; // Variable que se utiliza para controlar el tiempo de publicación en ThingSpeak
 long lastPosCalcMillis = 0; // Variable que almacena la última vez que se calculó el tiempo
-float _speed = 0; // Variable que almacena la velocidad en m/s
-float _pos = 0;   // Variable que almacena la posición del tren en m
+int _speed = 0; // Variable que almacena la velocidad en m/s
+int _pos = 0;   // Variable que almacena la posición del tren en m
 
 
 // Objetos
@@ -60,7 +60,6 @@ void setup()
   // Set the buffer to handle the returned JSON. NOTE: A buffer overflow of the message buffer will result in your callback not being invoked.
   mqttClient.setBufferSize( 2048 );
 
-  startTempToUpdatePos();
 }
 
 
@@ -83,6 +82,11 @@ void loop() {
 
   // Call the loop to maintain connection to the server.
   mqttClient.loop();
+
+  // Calculamos la pos cada segundo
+  if(abs(millis() - lastPosCalcMillis) > 1000){
+    updatePos();
+  }
 
     // Update ThingSpeak channel periodically. The update results in the message to the subscriber.
   if ( abs(millis() - lastPublishMillis) > updateTimeInterval) {
@@ -205,6 +209,9 @@ void mqttSubscriptionCallback( char* topic, byte* payload, unsigned int length )
  */
 int setTrainSpeed(int newSpeed)
 {
+  //Calculamos la posición alcanzada a la velocidad anterior
+  updatePos();
+  
   // Actualizamos la variable de velocidad en m/s
   _speed = getSpeedInMS(newSpeed);
   int speedPWM = map(_speed, 0, 28, 0, 255); // Adaptamos el número a una escala de 0 a 255
@@ -274,26 +281,24 @@ int payloadToInt( byte* payload, unsigned int length ){
 
 float getSpeedInKmH(int speedInMS)
 {
-  return (speedInMS * 18) / 5;
+  return (speedInMS * 18.0) / 5;
 }
 
 float getSpeedInMS(int speedInKmH)
 {
-  return (speedInKmH * 5) / 18;
+  return (speedInKmH * 5.0) / 18;
 }
 
 float getPosInKm(int posInM)
 {
-  return posInM / 1000;
+  return posInM * 1.0 / 1000;
 }
 
-void startTempToUpdatePos()
+void updatePos()
 {
-  TCC.startTimer(100000, updatePosAndRestartTimmer);
-}
-
-void updatePosAndRestartTimmer()
-{
-  _pos = _pos + _speed; // S = V(m/s) * T(1s) + Pos_(t-1)
-  startTempToUpdatePos();
+  float seconds = ((millis() - lastPosCalcMillis) * 1.0 / 1000);
+  _pos = _pos + _speed * seconds; // S = V(m/s) * T(s) + Pos_(t-1)
+  lastPosCalcMillis = millis();
+  Serial.print("Pos en metros: ");
+  Serial.println(_pos);
 }

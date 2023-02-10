@@ -27,6 +27,7 @@ const int trainSpeedControlField = TRAIN_SPEED_CONTROL_FIELD;
 const char* server = "mqtt3.thingspeak.com";
 int status = WL_IDLE_STATUS;
 long lastPublishMillis  = 0;
+int _speed = 0; // Variable que almacena la velocidad en Km/h
 
 
 // Objetos
@@ -44,6 +45,8 @@ void setup()
 
   // Llamamos a las funciones que hacen el setup de los componentes
   dcMotorSetup();
+
+  analogWrite(enPin, 0);
 
   // Connect to Wi-Fi network.
   connectWifi();
@@ -84,7 +87,7 @@ void loop() {
     
     int fieldsLength = trainFields;
     int fields[] = {trainPosField, trainSpeedField};
-    String payloads[] = {String(1), String(90)}; //<= Pendiente de enviar los valores reales
+    String payloads[] = {String(10), String(_speed)}; //<= Pendiente de enviar los valores reales
     mqttPublishChannelFeed(channelID, fields, payloads, fieldsLength);
     
     // Guardamos el momento de la última publicación.
@@ -188,8 +191,8 @@ void mqttSubscriptionCallback( char* topic, byte* payload, unsigned int length )
   String field = "field";
   
   if(topicString.indexOf(String(field + String(trainSpeedControlField))) >= 0){
-    int speed = payloadToInt(payload, length);
-    setTrainSpeed(speed);
+    int newSpeed = payloadToInt(payload, length);
+    setTrainSpeed(newSpeed);
   }
 }
 
@@ -198,13 +201,18 @@ void mqttSubscriptionCallback( char* topic, byte* payload, unsigned int length )
  * Recibimos la velocidad en Km/h, lo mapeamos a un rango 0 - 255 para
  * enviarle un valor analógico a la electrónica.
  */
-int setTrainSpeed(int speed)
+int setTrainSpeed(int newSpeed)
 {
-  int speedPWM = map(speed, 0, 100, 0, 255); // Adaptamos el número a una escala de 0 a 255
+  int speedPWM = map(newSpeed, 0, 100, 0, 255); // Adaptamos el número a una escala de 0 a 255
   analogWrite(enPin, speedPWM);
+
+  // Actualizamos la variable de velocidad
+  _speed = newSpeed;
  
-  Serial.println("El valor de velocidad intruducido es:");
-  Serial.println(speed); //Escribe el valor analogico PWM enPin
+  Serial.print("El valor de velocidad intruducido es: ");
+  Serial.print(newSpeed); //Escribe el valor analogico PWM enPin
+  Serial.print(" Km/h que equivalen a : ");
+  Serial.println(speedPWM); //Escribe el valor analogico PWM enPin
 }
 
 /**

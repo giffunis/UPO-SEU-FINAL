@@ -1,5 +1,6 @@
 #include <WiFi101.h>
 #include <PubSubClient.h>
+#include <LiquidCrystal.h>
 #include "arduino_secrets.h"
 #include "mqtt_settings.h"
 
@@ -35,10 +36,14 @@ int _pos = 0;   // Variable que almacena la posición del tren en m
 WiFiClient client; 
 PubSubClient mqttClient(client);
 
-// Declaración de los pines
+// Declaración de los pines del motor
 const int enPin   = 3; // PWM se conecta al pin 1 del puente-H
 const int in1Pin  = 4; // Entrada 2 del puente-H
 const int in2Pin  = 5; // Entrada 7 del puente-H
+
+// Declaración de los pines del LCD
+const int rs = 12, en = 11, d4 = 10, d5 = 9, d6 = 2, d7 = 1;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 void setup() 
 {
@@ -46,6 +51,7 @@ void setup()
 
   // Llamamos a las funciones que hacen el setup de los componentes
   dcMotorSetup();
+  lcdSetup();
 
   // Connect to Wi-Fi network.
   connectWifi();
@@ -239,6 +245,14 @@ void dcMotorSetup(){
 
   // Inicializamos la velocidad de inicio.
   analogWrite(enPin, _speed);
+}
+
+void lcdSetup(){
+  // set up the LCD's number of columns and rows:
+  lcd.begin(16, 2);
+
+  // Print a message to the LCD.
+  lcd.print("hello, world!");
 }
 
 /**

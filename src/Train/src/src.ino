@@ -19,6 +19,7 @@ const int updateTimeInterval = UPDATE_TIME_INTERVAL;
 const int mqttPort = MQTT_PORT;
 const int trainFields = TRAIN_FIELDS;
 const int trainPosField = TRAIN_POS_FIELD;
+const int stationPosField = STATION_POS_FIELD;
 const int trainSpeedField = TRAIN_SPEED_FIELD;
 const int trainSpeedControlField = TRAIN_SPEED_CONTROL_FIELD;
 
@@ -80,16 +81,25 @@ void loop() {
   if (!mqttClient.connected()) {
      mqttConnect(); 
 
-     // C9 - We subscribe only to the temperature field
+     
      mqttSubscribe(channelID, trainSpeedControlField);
+     mqttSubscribe(channelID, stationPosField);
   }
 
   // Call the loop to maintain connection to the server.
   mqttClient.loop();
 
-  // Calculamos la pos cada segundo
+  // Calculamos la posición y el tiempo restante cada segundo
   if(abs(millis() - lastPosCalcMillis) > 1000){
     updatePos();
+    calcTimeToNextStationAndPrint();
+  }
+
+  if(_posStation != 0 && abs(_posStation - _pos) < 10){
+    setTrainSpeed(0);
+    calcTimeToNextStationAndPrint();
+    _posStation = 0;
+    _pos = 0;
   }
 
     // Update ThingSpeak channel periodically. The update results in the message to the subscriber.
@@ -211,6 +221,13 @@ void mqttSubscriptionCallback( char* topic, byte* payload, unsigned int length )
     // Recalculamos el tiempo a la proxima estación a la próxima estación y la mostramos por pantalla
     calcTimeToNextStationAndPrint();
   }
+  else if(topicString.indexOf(String(field + String(stationPosField))) >= 0)
+  {
+    _posStation = payloadToInt(payload, length);    
+    
+    // Recalculamos el tiempo a la proxima estación a la próxima estación y la mostramos por pantalla
+    calcTimeToNextStationAndPrint();
+  }
 }
 
 /**
@@ -233,36 +250,32 @@ int setTrainSpeed(int newSpeed)
 
 void calcTimeToNextStationAndPrint()
 {
-
-  /*int newTime = calcTimeToNextStation();
-  if(_posStation !=0)
+  lcd.clear();
+  int newTime = calcTimeToNextStation();
+  
+  if(_speed != 0)
   {
-    if (newTime = 0){
-      lcdPrint(0, "Train Stopped");
-      lcdPrint(1, "");
-    }
-    else if(newTime < 10)
+    if(_posStation !=0)
     {
-      lcdPrint(0, "Enter in Station");
-      lcdPrint(1, "");
+      if (newTime < 10)
+      {
+        lcdPrint(0, "Entering ...");
+      }
+      else
+      {
+        lcdPrint(0, "Next Station");
+        lcdPrint(1, String(newTime / 60) + " min");
+      }  
     }
     else
-    {
-      lcdPrint(0, "Next Station");
-      lcdPrint(1, String(newTime) );
-    }  
+    {      
+      lcdPrint(0, "Train is Moving");
+    }
   }
   else
-  {*/
-    if (_speed == 0){
-      lcdPrint(0, "Train Stopped");
-      lcdPrint(1, "");
-    }
-    else {
-      lcdPrint(0, "Train is Moving");
-      lcdPrint(1, "");
-    }
-  //}
+  {
+    lcdPrint(0, "Train is stopped");
+  }  
   
 }
 
@@ -302,6 +315,7 @@ void dcMotorSetup(){
 void lcdSetup(){
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
+  calcTimeToNextStationAndPrint();
 }
 
 void lcdPrint(int line, String text){

@@ -1,4 +1,3 @@
-#include <ZeroTimer.h>
 #include <WiFi101.h>
 #include <PubSubClient.h>
 #include "arduino_secrets.h"
@@ -63,8 +62,6 @@ void setup()
 }
 
 
-
-
 void loop() {
  
    // Reconnect to WiFi if it gets disconnected.
@@ -76,8 +73,8 @@ void loop() {
   if (!mqttClient.connected()) {
      mqttConnect(); 
 
-     // We subscribe to a channel feed
-     mqttSubscribeToChannelFeed(channelID);
+     // C9 - We subscribe only to the temperature field
+     mqttSubscribe(channelID, trainSpeedControlField);
   }
 
   // Call the loop to maintain connection to the server.
@@ -93,7 +90,7 @@ void loop() {
     
     int fieldsLength = trainFields;
     int fields[] = {trainPosField, trainSpeedField};
-    String payloads[] = {String(getPosInKm(_pos)), String(getSpeedInKmH(_speed))}; //<= Pendiente de enviar los valores reales
+    String payloads[] = {String(_pos), String(getSpeedInKmH(_speed))};
     mqttPublishChannelFeed(channelID, fields, payloads, fieldsLength);
     
     // Guardamos el momento de la última publicación.
@@ -127,8 +124,9 @@ void connectWifi()
   printWiFiStatus();                        // you're connected now, so print out the status
 }
 
-// Connect to MQTT broker.
-
+/**
+ * Connect to MQTT broker.
+ */
 void mqttConnect() {
   // Loop until connected.
   while ( !mqttClient.connected() )
@@ -150,21 +148,18 @@ void mqttConnect() {
   }
 }
 
-
-/*
- * Subscribe to channel updates from a channel feed
+/**
+ * Subscribe to channel updates from specific field of channel with MQTT
  */
-void mqttSubscribeToChannelFeed(long subChannelID){
+void mqttSubscribe(long subChannelID, int fieldNumber ){
 
   //Create the topic name according to the ThingSpeak organization of topics
-  String myTopic = "channels/" + String( subChannelID ) + "/subscribe/fields/+";;
+  String myTopic = "channels/" + String( subChannelID ) + "/subscribe/fields/field" + String (fieldNumber);
 
   //Use MQTT client to subscribe
   mqttClient.subscribe(myTopic.c_str());
   
 }
-
-
 
 /**
  * Función para publicar todos los campos en el canal
@@ -179,7 +174,8 @@ void mqttPublishChannelFeed(long pubChannelID, int* fieldNumbers, String* payloa
   }
   
   payload += "status=MQTTPUBLISH";
-  mqttClient.publish( topicString.c_str(), payload.c_str() );   
+  mqttClient.publish( topicString.c_str(), payload.c_str() );
+  Serial.println(payload);
 }
 
 // Function to handle messages from MQTT subscription.

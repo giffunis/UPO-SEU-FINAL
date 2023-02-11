@@ -30,6 +30,7 @@ long lastPublishMillis = 0; // Variable que se utiliza para controlar el tiempo 
 long lastPosCalcMillis = 0; // Variable que almacena la última vez que se calculó el tiempo
 int _speed = 0; // Variable que almacena la velocidad en m/s
 int _pos = 0;   // Variable que almacena la posición del tren en m
+int _posStation = 0; // Variable que almacena la posición de la estación en m.
 
 
 // Objetos
@@ -200,20 +201,24 @@ void mqttSubscriptionCallback( char* topic, byte* payload, unsigned int length )
   
   if(topicString.indexOf(String(field + String(trainSpeedControlField))) >= 0){
     int newSpeed = payloadToInt(payload, length);
+
+    // Calculamos la posición alcanzada a la velocidad anterior
+    updatePos();
+
+    // Aplicamos la nueva velocidad
     setTrainSpeed(newSpeed);
+
+    // Recalculamos el tiempo a la proxima estación a la próxima estación y la mostramos por pantalla
+    calcTimeToNextStationAndPrint();
   }
 }
-
 
 /**
  * Recibimos la velocidad en Km/h, lo mapeamos a un rango 0 - 255 para
  * enviarle un valor analógico a la electrónica.
  */
 int setTrainSpeed(int newSpeed)
-{
-  //Calculamos la posición alcanzada a la velocidad anterior
-  updatePos();
-  
+{ 
   // Actualizamos la variable de velocidad en m/s
   _speed = getSpeedInMS(newSpeed);
   int speedPWM = map(_speed, 0, 28, 0, 255); // Adaptamos el número a una escala de 0 a 255
@@ -224,6 +229,50 @@ int setTrainSpeed(int newSpeed)
   Serial.print(" Km/h o ");
   Serial.print(_speed);
   Serial.println(" m/s");
+}
+
+void calcTimeToNextStationAndPrint()
+{
+
+  /*int newTime = calcTimeToNextStation();
+  if(_posStation !=0)
+  {
+    if (newTime = 0){
+      lcdPrint(0, "Train Stopped");
+      lcdPrint(1, "");
+    }
+    else if(newTime < 10)
+    {
+      lcdPrint(0, "Enter in Station");
+      lcdPrint(1, "");
+    }
+    else
+    {
+      lcdPrint(0, "Next Station");
+      lcdPrint(1, String(newTime) );
+    }  
+  }
+  else
+  {*/
+    if (_speed == 0){
+      lcdPrint(0, "Train Stopped");
+      lcdPrint(1, "");
+    }
+    else {
+      lcdPrint(0, "Train is Moving");
+      lcdPrint(1, "");
+    }
+  //}
+  
+}
+
+/**
+ * Calcula el tiempo restante a la próxima estación
+ * Devuelve el tiempo en segundos
+ */
+int calcTimeToNextStation()
+{
+  return (_posStation - _pos) * 1.0 / _speed;
 }
 
 /**
@@ -247,12 +296,17 @@ void dcMotorSetup(){
   analogWrite(enPin, _speed);
 }
 
+/**
+ * Inicializa el lcd
+ */
 void lcdSetup(){
   // set up the LCD's number of columns and rows:
   lcd.begin(16, 2);
+}
 
-  // Print a message to the LCD.
-  lcd.print("hello, world!");
+void lcdPrint(int line, String text){
+  lcd.setCursor(0, line);// set the cursor to column 0, line
+  lcd.print(text);  
 }
 
 /**

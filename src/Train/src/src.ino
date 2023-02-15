@@ -305,8 +305,8 @@ void dcMotorSetup(){
   digitalWrite(in2Pin,HIGH);
 
   // Establecemos el sentido del giro 'anti-horario'
-  digitalWrite(in1Pin,HIGH);
-  digitalWrite(in2Pin,LOW);
+  //digitalWrite(in1Pin,HIGH);
+  //digitalWrite(in2Pin,LOW);
 
   // Inicializamos la velocidad de inicio.
   analogWrite(enPin, _speed);

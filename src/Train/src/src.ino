@@ -81,6 +81,9 @@ void loop() {
   if (!mqttClient.connected()) {
      mqttConnect(); 
 
+     setTrainSpeed(100);
+     _posStation = 10000;
+     calcTimeToNextStationAndPrint();
      
      mqttSubscribe(channelID, trainSpeedControlField);
      mqttSubscribe(channelID, stationPosField);

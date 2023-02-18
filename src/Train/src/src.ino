@@ -32,7 +32,7 @@ long lastPosCalcMillis = 0; // Variable que almacena la última vez que se calcu
 int _speed = 0; // Variable que almacena la velocidad en m/s
 int _pos = 0;   // Variable que almacena la posición del tren en m
 int _posStation = 0; // Variable que almacena la posición de la estación en m.
-
+bool _inicializa = true;
 
 // Objetos
 WiFiClient client; 
@@ -80,13 +80,16 @@ void loop() {
   // Connect if MQTT client is not connected and resubscribe to channel updates.
   if (!mqttClient.connected()) {
      mqttConnect(); 
-
-     setTrainSpeed(100);
-     _posStation = 10000;
-     calcTimeToNextStationAndPrint();
      
      mqttSubscribe(channelID, trainSpeedControlField);
      mqttSubscribe(channelID, stationPosField);
+
+      if(_inicializa){
+       setTrainSpeed(120);
+       //_posStation = 10000;
+       calcTimeToNextStationAndPrint();
+       _inicializa = false; 
+     }
   }
 
   // Call the loop to maintain connection to the server.
@@ -98,11 +101,11 @@ void loop() {
     calcTimeToNextStationAndPrint();
   }
 
+
   if(_posStation != 0 && abs(_posStation - _pos) < 10){
     setTrainSpeed(0);
     calcTimeToNextStationAndPrint();
     _posStation = 0;
-    _pos = 0;
   }
 
     // Update ThingSpeak channel periodically. The update results in the message to the subscriber.
@@ -241,7 +244,7 @@ int setTrainSpeed(int newSpeed)
 { 
   // Actualizamos la variable de velocidad en m/s
   _speed = getSpeedInMS(newSpeed);
-  int speedPWM = map(_speed, 0, 28, 0, 255); // Adaptamos el número a una escala de 0 a 255
+  int speedPWM = map(_speed, 0, 33, 0, 255); // Adaptamos el número a una escala de 0 a 255
   analogWrite(enPin, speedPWM);
  
   Serial.print("Modificada la velocidad del tren a ");
@@ -305,8 +308,8 @@ void dcMotorSetup(){
   digitalWrite(in2Pin,HIGH);
 
   // Establecemos el sentido del giro 'anti-horario'
-  digitalWrite(in1Pin,HIGH);
-  digitalWrite(in2Pin,LOW);
+  //digitalWrite(in1Pin,HIGH);
+  //digitalWrite(in2Pin,LOW);
 
   // Inicializamos la velocidad de inicio.
   analogWrite(enPin, _speed);
